@@ -1,0 +1,27 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compatibility SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-webengine-dev
+      # Permit Chromium's user-namespace sandbox on this ephemeral Ubuntu runner.
+      # This does not pass --no-sandbox to the engine.
+      - name: Permit sandbox user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: cmake --preset dev
+      - run: cmake --build --preset dev --parallel 2
+      - run: ctest --preset dev
+      - name: Release build
+        run: |
+          cmake --preset release -DBUILD_TESTING=OFF
+          cmake --build --preset release --parallel 2
